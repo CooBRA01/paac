@@ -1,0 +1,24 @@
+- name: install docker on target machine
+  hosts: web-app
+  vars:
+    ansible_python_interpreter: /usr/bin/python2.7
+
+  tasks: 
+
+    - name: install docker 
+      apt: 
+        name: docker.io
+        state: present
+
+    - name: pull docker image
+      docker_image:
+        name: bkhedher/1-reactpaac
+        source: pull
+
+    - name: run the docker container
+      docker_container:
+        name: app-container
+        image: bkhedher/1-reactpaac
+        state: started
+        ports:
+          - "3000:3000"

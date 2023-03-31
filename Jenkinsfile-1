@@ -1,0 +1,69 @@
+pipeline {
+
+    agent any
+
+ 
+    stages {
+
+        /* stage('Pull application code') {
+          steps {
+              git branch: 'main' , url: 'https://github.com/CooBRA01/react-paac.git'
+          }
+
+        */
+
+        stage('Code Quality test') {
+
+
+            steps {
+                withSonarQubeEnv('sonar') {
+
+                 sh '''/var/lib/jenkins/tools/hudson.plugins.sonar.SonarRunnerInstallation/sonar4.8/bin/sonar-scanner -Dsonar.projectKey=thareactpaac \
+                        -Dsonar.projectVersion=1.0 \
+                        -Dsonar.sources=src '''
+            }
+        }
+
+
+    }
+
+    stage('Quality Gate') {
+        steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    // Parameter indicates whether to set pipeline to UNSTABLE if Quality Gate fails
+                    // true = set pipeline to UNSTABLE, false = don't
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+    }
+
+    stage('Building application Image') {
+        steps {
+            sh 'docker build -t bkhedher/1-reactpaac .'
+        }
+    }
+
+    stage('Push image to dockerhub'){
+
+        environment {
+                dockerhub=credentials('bk-dockerhub')
+        }
+
+        steps {
+            sh 'docker logout'
+            sh 'echo $dockerhub_PSW | docker login -u $dockerhub_USR --password-stdin'
+            sh 'docker push bkhedher/1-reactpaac'
+      }
+    } 
+         
+
+    stage('Deploy App with Ansible') {
+    steps {
+        ansiblePlaybook become: true, colorized: true, credentialsId: 'access-creds', disableHostKeyChecking: true, installation: 'ansible', inventory: 'inventory', playbook: 'hector.yml', vaultCredentialsId: 'ansible-vault-password'
+    }
+}
+
+}
+}
+
+
